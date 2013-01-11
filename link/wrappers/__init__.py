@@ -6,6 +6,4 @@ import logging
 try:
     from atlassianwrappers import *
 except:
-    logging.warning("missing dependencies for atlassianwrappers, ignoring..."
-    pass
-
+    logging.warning("missing dependencies for atlassianwrappers, ignoring...")
