@@ -114,7 +114,7 @@ class DBConnectionWrapper(Wrapper):
         except:
             raise Exception("pandas required to select dataframe. Please install"  + 
                             "sudo easy_install pandas")
-        df = psql.frame_query(query) 
+        df = psql.frame_query(query, self._wrapped) 
         return df 
     #TODO: Add in the ability to pass in params and also index 
     def select_dataframe(self, query, args=()):
