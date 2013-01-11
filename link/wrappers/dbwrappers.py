@@ -100,6 +100,22 @@ class DBConnectionWrapper(Wrapper):
         cursor = self._wrapped.cursor()
         return DBCursorWrapper(cursor, query, args=args)()
 
+    #go native with the dataframe selection from sql
+    #todo: add support for args [ use cursor.mogrify for psql world ]
+    #for mysql,sqlite3 what to do...
+    def select_dataframe_native(self, query):
+        """
+        Select everything into a datafrome
+        pronto
+        """
+        try:
+            from pandas import DataFrame
+            import pandas.io.sql as psql
+        except:
+            raise Exception("pandas required to select dataframe. Please install"  + 
+                            "sudo easy_install pandas")
+        df = psql.frame_query(query) 
+        return df 
     #TODO: Add in the ability to pass in params and also index 
     def select_dataframe(self, query, args=()):
         """
@@ -108,6 +124,7 @@ class DBConnectionWrapper(Wrapper):
         """
         try:
             from pandas import DataFrame
+            import pandas.io.sql as psql
         except:
             raise Exception("pandas required to select dataframe. Please install"  + 
                             "sudo easy_install pandas")
