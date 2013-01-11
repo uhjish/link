@@ -2,4 +2,10 @@ from apiwrappers import *
 from dbwrappers import *
 from nosqlwrappers import *
 from consolewrappers import *
-from atlassianwrappers import *
+import logging
+try:
+    from atlassianwrappers import *
+except:
+    logging.warning("missing dependencies for atlassianwrappers, ignoring..."
+    pass
+
