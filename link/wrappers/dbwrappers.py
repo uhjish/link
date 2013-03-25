@@ -483,7 +483,7 @@ class PostgresDB(DBConnectionWrapper):
         return self.select('select distinct table_catalog, table_schema from information_schema.tables').data
 
     def tables(self):
-        return [ x[0] for x in self.select('select table_name from information_schema.tables where table_schema = (select current_schema())').data ]
+        return [ x[0] for x in self.select('select table_name from information_schema.tables;').data ]
 
     def now(self):
         # not sure that the [0][0] will always be true...but it works now
