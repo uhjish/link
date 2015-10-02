@@ -86,9 +86,11 @@ class APIRequestWrapper(Wrapper):
         self.user = user
         self.password = password
         self.response_wrapper = response_wrapper 
-        sess = requests.session(headers = self.headers)
+        sess = requests.session()
+        sess.headers = self.headers
         super(APIRequestWrapper, self).__init__(wrap_name, sess)
-        sess.auth = self.authenticate() 
+        # Sets the Auth for the requests.session() object
+        self.authenticate()
     
     def authenticate(self):
         """
@@ -97,7 +99,9 @@ class APIRequestWrapper(Wrapper):
         it will auth using HTTPBasicAuth
         """
         if self.user and self.password:
-            return HTTPBasicAuth(self.user, self.password)
+            # self._wrapped object is the requests.session() object. So we just set the
+            # auth here
+            self._wrapped.auth = HTTPBasicAuth(self.user, self.password)
 
     def request(self, method='get', url_params = '' , data = '', allow_reauth =
                 True, **kwargs):
@@ -111,13 +115,13 @@ class APIRequestWrapper(Wrapper):
 
         full_url = self.base_url + url_params
         #turn the string method into a function name
-        method = self._wrapped.__getattribute__(method)
-        resp = self.response_wrapper(response = method(full_url, data = data, 
+        _method = self._wrapped.__getattribute__(method)
+        resp = self.response_wrapper(response = _method(full_url, data = data,
                                                        **kwargs))
         #if you get a no auth then retry the auth
         if allow_reauth and resp.noauth():
-            self.authenicate()
-            self.request(method, url_params, data, allow_reauth=False, **kwargs)
+            self.authenticate()
+            return self.request(method, url_params, data, allow_reauth=False, **kwargs)
 
         return resp
     
@@ -140,12 +144,20 @@ class APIRequestWrapper(Wrapper):
         """
         return self.request('post', url_params = url_params, data = data,
                             **kwargs)
+    
+    def delete(self, url_params='', data='', **kwargs):
+        """
+        Make a delete call
+        """
+        return self.request('delete', url_params = url_params, data = data,
+                            **kwargs)
 
     def clear_session(self):
         """
         clears the session and reauths
         """
-        sess = requests.session(headers = self.headers)
+        sess = requests.session()
+        sess.headers = self.headers
         self._wrapped = sess
         self._wrapped = self.authenticate()
 
@@ -173,4 +185,29 @@ class LnkClient(JsonClient):
     def new(self):
         post = {"user": self.user, 'password': self.password}
         return self.post('/new', data = json.dumps(post))
+
+class OAuth1API(APIRequestWrapper):
+    """
+    Wrap the Console API
+    """
+    def __init__(self, wrap_name=None, base_url=None, app_key=None,
+                 app_secret=None, oauth_token=None, oauth_token_secret=None):
+        self.app_key = str(app_key)
+        self.app_secret = str(app_secret)
+        self.oauth_token = str(oauth_token)
+        self.oauth_token_secret = str(oauth_token_secret)
+
+        super(OAuth1API, self).__init__(wrap_name = wrap_name, 
+                                                       base_url=base_url,
+                                                       response_wrapper = APIResponseWrapper)
+    def authenticate(self):
+        """
+        Write a custom auth property where we grab the auth token and put it in 
+        the headers
+        """
+        from requests_oauthlib import OAuth1
+        auth = OAuth1(self.app_key, self.app_secret, self.oauth_token,
+                      self.oauth_token_secret)
+        return auth
+
 

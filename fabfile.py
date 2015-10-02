@@ -42,6 +42,18 @@ def dir_scripts():
 
 config_dir = '~/.link' 
 
+def test_install():
+    import os
+    #set the link dir to something silly
+    os.environ['LNK_DIR']='saodusah'
+    #create a virtual environment
+    local('echo $LNK_DIR')
+    local('virtualenv env')
+    #remove everything from the build directory
+    local('rm -rf build')
+    #run this and see that it works
+    local('source env/bin/activate && python setup.py install')
+
 def configure():
     """
     Create the base configuration so that you can change it.  Might want to
@@ -102,6 +114,8 @@ def commit(msg=None):
 
 def tag_names(number = 10, stable=False):
     number = int(number)
+    print "fetching tags first"
+    local('git fetch --tags ')
     print "Showing latest tags for reference"
     tags =  local('git tag -n1 ', capture = True)
     tags = [x for x in tags.split('\n') if TAG_REGEX.findall(x) and 
@@ -138,27 +152,29 @@ def write_version(version):
     version needs to be a list or tuple of the form (<major>, <minor>, <build>)
     or a string in the format <major>.<minor>.<build> all ints
     """
-    cnt = "version = '%s'\nversion_details = %s\n"
-    file ='%s/link/version.py' % LINK_CODE_DIR
+    file_name ='link/__init__.py'
+    init = open(file_name)
+    init_read = init.readlines()
+    init.close()
+    version_line =  [idx for idx, x in enumerate(init_read) if '__version__ = ' in x]
+    if len(version_line)>1:
+        raise Exception('version is in there more than once')
     
     if isinstance(version, str):
         try:
-            version = map(int, version.split('.'))
+            version_split = map(int, version.split('.'))
         except:
             raise Exception("Version string must be in the format <major>.<minor>.<build>")
 
-    if not isinstance(version, (list, tuple)) and len(version)!=3:
+    if not isinstance(version_split, (list, tuple)) or len(version_split)!=3:
         raise Exception('invalid version %s' % version)
 
-    version = tuple(version)
-
-    a = open(file, 'w')
-    version_string = '.'.join(map(str,version))
-
+    init_read[version_line[0]] = "__version__ = '%s'\n" % version
+    init = open(file_name, 'w')
     try:
-        a.write(cnt % (version_string, version))
+        init.write(''.join(init_read))
     finally:
-        a.close()
+        init.close()
 
 def prompt_for_tag(default_offset=1, stable_only = False):
     """
@@ -184,7 +200,7 @@ def push_to_pypi():
     """
     if prompt('would you like to tag a new version first [y/n]') == 'y':
         tag()
-    local('sudo python setup.py sdist upload')
+    local('python setup.py sdist upload')
 
 def prompt_commit():
     """
@@ -229,6 +245,9 @@ def tag(mark_stable=False):
     return tag
  
 def merge(branch=None, merge_to = 'master'):
+    """
+    Merge your changes and delete the old branch
+    """
     if not branch:
         print "no branch specified, using current"
         branch = current_branch()
@@ -236,13 +255,13 @@ def merge(branch=None, merge_to = 'master'):
         prompt_commit()
         local('git checkout %s ' % merge_to)
         local('git merge %s ' % branch)
-        if prompt('delete the old branch [y/N]') == 'y':
-            print local('git branch -d %s' % branch)
+        if prompt('delete the old branch locally and remotely? [y/N]') == 'y':
+            local('git branch -d %s' % branch)
+            local('git push origin :%s' % branch)
         else:
             print "leaving branch where it is"
     if prompt('push results [y/N]' ) == 'y':
         local('git push')
-
 
 def tag_deploy(mark_stable=False):
     """
