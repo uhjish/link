@@ -5,8 +5,13 @@ from apiwrappers import *
 from dbwrappers import *
 from nosqlwrappers import *
 from consolewrappers import *
-from atlassianwrappers import *
 from alexawrappers import *
 from hivewrappers import *
 from elasticsearchwrappers import *
 from liverailwrappers import *
+import logging
+try:
+    from atlassianwrappers import *
+except:
+    logging.warning("missing dependencies for atlassianwrappers, ignoring...")
+    pass
